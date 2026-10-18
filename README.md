@@ -10,7 +10,7 @@
 
 **Integrantes do grupo:**
 
-| Nome completo 
+| Nome completo |
 |---|---|
 | *Monnik Luianne Oliveira Nascimento Veloso Barbosa* | 
 | *João Pedro Pereira da Luz* | 

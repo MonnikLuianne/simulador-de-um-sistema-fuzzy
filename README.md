@@ -11,10 +11,10 @@
 **Integrantes do grupo:**
 
 | Nome completo |
-|---|---|
-| *Monnik Luianne Oliveira Nascimento Veloso Barbosa* | 
-| *João Pedro Pereira da Luz* | 
-| *Guilherme Ribeiro Nunes Batista* | 
+|---|
+| Monnik Luianne Oliveira Nascimento Veloso Barbosa |
+| João Pedro Pereira da Luz |
+| Guilherme Ribeiro Nunes Batista |
 
 **Links:**
 - Aplicação publicada (GitHub Pages): *[(preencher após publicar)](https://monnikluianne.github.io/simulador-de-um-sistema-fuzzy/)*

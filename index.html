@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sistema Fuzzy de Irrigação — Mamdani</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:        #f5f0e8;
+  --surface:   #ede8de;
+  --surface2:  #e4ddd0;
+  --surface3:  #d9d0c0;
+
+  --border:    rgba(140,100,60,0.22);
+  --border2:   rgba(140,100,60,0.12);
+
+  --burnt:     #b8541a;
+  --burnt-dim: rgba(184,84,26,0.12);
+  --burnt-mid: rgba(184,84,26,0.22);
+  --clay:      #c97a3a;
+  --sand:      #d9a86c;
+  --earth:     #7a4f2a;
+  --earth-dim: rgba(122,79,42,0.10);
+
+  --ink:       #2c1f0e;
+  --ink-mid:   #5a3d20;
+  --ink-muted: #8a6a48;
+  --ink-dim:   #b59e84;
+
+  --radius:    8px;
+  --radius-sm: 5px;
+  --transition: 0.18s ease;
+
+  --font-display: 'Lora', Georgia, serif;
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* ---- Header ---- */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 28px;
+  background: var(--surface);
+  border-bottom: 2px solid var(--burnt);
+}
+
+.header-left { display: flex; align-items: center; gap: 14px; }
+
+.header-icon {
+  width: 42px; height: 42px;
+  background: var(--burnt-dim);
+  border: 1.5px solid var(--burnt);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+
+header h1 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--earth);
+  letter-spacing: -0.2px;
+}
+
+header p {
+  font-size: 11px;
+  color: var(--ink-muted);
+  margin-top: 1px;
+}
+
+.repo-link {
+  font-size: 11px;
+  color: var(--ink-muted);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  padding: 5px 11px;
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  transition: var(--transition);
+}
+.repo-link:hover { border-color: var(--burnt); color: var(--burnt); }
+
+/* ---- Pipeline ---- */
+.step-pipeline {
+  display: flex;
+  align-items: center;
+  padding: 8px 28px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border2);
+  overflow-x: auto;
+  gap: 2px;
+}
+
+.step-dot {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  border: 1px solid transparent;
+  transition: var(--transition);
+}
+.step-dot.done  { color: var(--clay); background: var(--burnt-dim); border-color: var(--border); }
+.step-dot.active{ color: var(--burnt); background: var(--burnt-mid); border-color: var(--burnt); font-weight: 600; }
+.step-arrow { color: var(--ink-dim); font-size: 12px; padding: 0 2px; }
+
+/* ---- Layout ---- */
+.main-layout {
+  display: grid;
+  grid-template-columns: 272px 1fr;
+  min-height: calc(100vh - 90px);
+}
+
+/* ---- Sidebar ---- */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+}
+
+.ctrl-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  margin-bottom: 8px;
+}
+
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+input[type=range] {
+  flex: 1;
+  accent-color: var(--burnt);
+  cursor: pointer;
+  height: 4px;
+}
+
+input[type=number] {
+  width: 64px;
+  padding: 5px 7px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-align: right;
+  outline: none;
+  transition: border-color var(--transition);
+}
+input[type=number]:focus { border-color: var(--burnt); }
+
+.unit { font-size: 11px; color: var(--ink-muted); min-width: 22px; }
+
+select {
+  width: 100%;
+  padding: 6px 9px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+select:focus { border-color: var(--burnt); }
+
+.btn-group { display: flex; flex-direction: column; gap: 7px; }
+
+.btn {
+  padding: 9px 14px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-primary   { background: var(--burnt); color: #fff; }
+.btn-primary:hover { background: #a04515; }
+
+.btn-secondary {
+  background: var(--burnt-dim);
+  border: 1px solid rgba(184,84,26,0.35);
+  color: var(--burnt);
+}
+.btn-secondary:hover { background: var(--burnt-mid); }
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--ink-muted);
+}
+.btn-ghost:hover { border-color: var(--burnt); color: var(--burnt); }
+
+#errorMsg {
+  display: none;
+  background: rgba(184,84,26,0.08);
+  border: 1px solid rgba(184,84,26,0.35);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--burnt);
+  line-height: 1.4;
+}
+
+.result-box {
+  background: var(--burnt-dim);
+  border: 1.5px solid var(--clay);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+  transition: opacity var(--transition);
+}
+.result-box.stale { opacity: 0.45; }
+.result-label { font-size: 11px; color: var(--ink-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.result-value {
+  font-family: var(--font-display);
+  font-size: 38px;
+  font-weight: 600;
+  color: var(--earth);
+  line-height: 1.1;
+  margin-top: 4px;
+}
+.result-unit { font-size: 12px; color: var(--ink-muted); margin-top: 2px; }
+
+.divider { height: 1px; background: var(--border2); }
+
+/* ---- Main area ---- */
+.main-area { display: grid; grid-template-rows: 1fr auto; overflow: hidden; }
+
+.chart-section {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border2);
+}
+
+.tab-bar { display: flex; gap: 4px; margin-bottom: 12px; }
+
+.tab-btn {
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--ink-muted);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.tab-btn.active { background: var(--burnt-dim); border-color: var(--burnt); color: var(--burnt); font-weight: 600; }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+.chart-wrap { position: relative; height: 205px; }
+
+.badge-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+
+.badge {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--ink-dim);
+}
+.badge-active { border-color: var(--clay); background: var(--burnt-dim); color: var(--earth); }
+.badge-label  { font-weight: 600; }
+.badge-val    { font-family: var(--font-mono); font-size: 11px; }
+
+/* ---- Bottom ---- */
+.bottom-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--border);
+  max-height: 305px;
+  overflow: hidden;
+}
+
+.rules-panel {
+  padding: 14px 16px;
+  border-right: 1px solid var(--border2);
+  overflow-y: auto;
+  background: var(--surface);
+}
+.rules-panel h3, .log-container h3 {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--earth);
+  margin-bottom: 10px;
+}
+
+.rules-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
+
+.rule-card {
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  transition: var(--transition);
+}
+.rule-card.rule-active {
+  border-color: var(--clay);
+  background: var(--burnt-dim);
+  cursor: pointer;
+}
+.rule-card.rule-active:hover { box-shadow: 0 2px 10px rgba(184,84,26,0.18); }
+.rule-card.rule-zero   { opacity: 0.35; }
+.rule-card.rule-highlight { border-color: var(--burnt); box-shadow: 0 0 10px rgba(184,84,26,0.3); }
+
+.rule-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+.rule-num    { font-size: 10px; font-weight: 700; color: var(--ink-muted); }
+.rule-out    { font-size: 10px; font-weight: 600; padding: 1px 5px; border-radius: 10px; }
+.tag-curto { background: rgba(58,158,107,0.15); color: #3a6b52; }
+.tag-medio { background: rgba(180,130,40,0.15);  color: #7a5a10; }
+.tag-longo { background: rgba(184,84,26,0.18);   color: var(--burnt); }
+
+.rule-body   { font-size: 10px; color: var(--ink-muted); margin-bottom: 3px; }
+.rule-ant b  { color: var(--ink); }
+
+.rule-activation { display: flex; align-items: center; gap: 5px; margin-top: 3px; }
+.h-bar-track { flex: 1; height: 3px; background: rgba(0,0,0,0.08); border-radius: 2px; overflow: hidden; }
+.h-bar-fill  { height: 100%; background: var(--clay); border-radius: 2px; transition: width 0.4s ease; }
+.h-val       { font-family: var(--font-mono); font-size: 9px; color: var(--burnt); min-width: 30px; text-align: right; }
+
+.rule-sel {
+  width: 100%;
+  margin-top: 4px;
+  padding: 3px 5px;
+  font-size: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--ink);
+}
+
+/* ---- Log ---- */
+.log-container { padding: 14px 16px; overflow-y: auto; background: var(--bg); }
+#logPanel { font-family: var(--font-mono); font-size: 11px; line-height: 1.75; }
+.log-hint   { color: var(--ink-dim); font-family: var(--font-body); font-style: italic; font-size: 11px; }
+.log-section{ color: var(--burnt); font-weight: 600; margin-top: 9px; margin-bottom: 2px; font-family: var(--font-body); font-size: 11px; }
+.log-line   { color: var(--ink-muted); padding-left: 8px; border-left: 2px solid var(--border2); margin-bottom: 2px; }
+.log-line b { color: var(--ink); }
+.log-line i { color: var(--clay); }
+
+/* ---- Scrollbars ---- */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--clay); }
+
+/* ---- Responsivo ---- */
+@media(max-width:860px){
+  .main-layout { grid-template-columns: 1fr; }
+  .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  .bottom-section { grid-template-columns: 1fr; max-height: none; }
+  .rules-panel { border-right: none; border-bottom: 1px solid var(--border2); }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="header-icon">🌱</div>
+    <div>
+      <h1>Sistema Fuzzy de Irrigação</h1>
+      <p>Inferência Mamdani · UFPI · Inteligência Artificial 2026.2</p>
+    </div>
+  </div>
+  <a class="repo-link" href="https://github.com/" target="_blank">⎇ Repositório</a>
+</header>
+
+<nav class="step-pipeline">
+  <div class="step-dot" data-step="1">① Fuzzificação</div>
+  <span class="step-arrow">›</span>
+  <div class="step-dot" data-step="2">② Avaliação</div>
+  <span class="step-arrow">›</span>
+  <div class="step-dot" data-step="3">③ Implicação</div>
+  <span class="step-arrow">›</span>
+  <div class="step-dot" data-step="4">④ Agregação</div>
+  <span class="step-arrow">›</span>
+  <div class="step-dot" data-step="5">⑤ Defuzzificação</div>
+</nav>
+
+<div class="main-layout">
+  <aside class="sidebar">
+    <div>
+      <label class="ctrl-label">Umidade do solo</label>
+      <div class="input-row">
+        <input type="range" id="sliderU" min="0" max="100" step="0.5" value="35"/>
+        <input type="number" id="inputU" min="0" max="100" step="0.5" value="35"/>
+        <span class="unit">%</span>
+      </div>
+    </div>
+    <div>
+      <label class="ctrl-label">Temperatura ambiente</label>
+      <div class="input-row">
+        <input type="range" id="sliderT" min="10" max="40" step="0.5" value="30"/>
+        <input type="number" id="inputT" min="10" max="40" step="0.5" value="30"/>
+        <span class="unit">°C</span>
+      </div>
+    </div>
+    <div>
+      <label class="ctrl-label">Passo Δz</label>
+      <select id="inputDz">
+        <option value="0.1" selected>0,1 min</option>
+        <option value="0.05">0,05 min</option>
+        <option value="0.01">0,01 min</option>
+      </select>
+    </div>
+    <div class="divider"></div>
+    <div class="btn-group">
+      <button class="btn btn-primary"   id="btnCalcular">▶ Calcular</button>
+      <button class="btn btn-secondary" id="btnAvancar">→ Avançar etapa</button>
+      <button class="btn btn-ghost"     id="btnRestaurar">↺ Restaurar padrão</button>
+    </div>
+    <div id="errorMsg"></div>
+    <div class="divider"></div>
+    <div class="result-box stale" id="resultBox">
+      <div class="result-label">Tempo de irrigação</div>
+      <div class="result-value" id="resultValue">—</div>
+      <div class="result-unit">minutos</div>
+    </div>
+  </aside>
+
+  <div class="main-area">
+    <section class="chart-section">
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="umidade">Umidade</button>
+        <button class="tab-btn" data-tab="temp">Temperatura</button>
+        <button class="tab-btn" data-tab="saida">Saída</button>
+      </div>
+      <div class="tab-panel active" id="tab-umidade">
+        <div class="chart-wrap"><canvas id="chartUmidade"></canvas></div>
+        <div class="badge-row" id="badgeUmidade"></div>
+      </div>
+      <div class="tab-panel" id="tab-temp">
+        <div class="chart-wrap"><canvas id="chartTemp"></canvas></div>
+        <div class="badge-row" id="badgeTemp"></div>
+      </div>
+      <div class="tab-panel" id="tab-saida">
+        <div class="chart-wrap"><canvas id="chartSaida"></canvas></div>
+        <p style="font-size:10px;color:var(--ink-dim);margin-top:6px;">Clique em uma regra ativa para destacar seu recorte. Área preenchida = região agregada · linha vermelha = centroide z*</p>
+      </div>
+    </section>
+
+    <div class="bottom-section">
+      <div class="rules-panel">
+        <h3>Base de Regras</h3>
+        <div class="rules-grid" id="ruleCards"></div>
+      </div>
+      <div class="log-container">
+        <h3>Log de etapas</h3>
+        <div id="logPanel"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// FUZZY — Núcleo Mamdani
+// ============================================================
+function membership(x,a,b,c,d){
+  if(x<a||x>d) return 0;
+  if(b<=x&&x<=c) return 1;
+  if(x<b) return (a===b)?1:(x-a)/(b-a);
+  return (c===d)?1:(d-x)/(d-c);
+}
+
+const SETS={
+  umidade:{
+    seco:[0,0,20,50], intermediario:[20,50,50,80], umido:[50,80,100,100]
+  },
+  temperatura:{
+    baixa:[10,10,15,25], media:[15,25,25,35], alta:[25,35,40,40]
+  },
+  saida:{
+    curto:[0,0,0,15], medio:[0,15,15,30], longo:[15,30,30,30]
+  }
+};
+
+const DEFAULT_RULES=[
+  ['seco','baixa','medio'],['seco','media','longo'],['seco','alta','longo'],
+  ['intermediario','baixa','curto'],['intermediario','media','medio'],['intermediario','alta','longo'],
+  ['umido','baixa','curto'],['umido','media','curto'],['umido','alta','curto'],
+];
+
+function fuzzify(U,T){
+  return{
+    umidade:{
+      seco:membership(U,...SETS.umidade.seco),
+      intermediario:membership(U,...SETS.umidade.intermediario),
+      umido:membership(U,...SETS.umidade.umido)
+    },
+    temperatura:{
+      baixa:membership(T,...SETS.temperatura.baixa),
+      media:membership(T,...SETS.temperatura.media),
+      alta:membership(T,...SETS.temperatura.alta)
+    }
+  };
+}
+
+function evaluateRules(fi,rules){
+  return rules.map(([uSet,tSet,outSet])=>{
+    const muU=fi.umidade[uSet], muT=fi.temperatura[tSet], h=Math.min(muU,muT);
+    return{uSet,tSet,outSet,muU,muT,h};
+  });
+}
+
+function inferAndDefuzz(activations,dz){
+  const N=Math.round(30/dz);
+  let sumN=0,sumD=0;
+  const pts=[];
+  for(let k=0;k<N;k++){
+    const z=(k+0.5)*dz;
+    let muAgg=0;
+    for(const{outSet,h} of activations){
+      if(h===0) continue;
+      muAgg=Math.max(muAgg,Math.min(h,membership(z,...SETS.saida[outSet])));
+    }
+    pts.push({z,mu:muAgg});
+    sumN+=z*muAgg; sumD+=muAgg;
+  }
+  if(sumD===0) return{zStar:null,aggregatedPoints:pts};
+  return{zStar:sumN/sumD,aggregatedPoints:pts};
+}
+
+function runInference(U,T,rules,dz){
+  const fuzzyInputs=fuzzify(U,T);
+  const activations=evaluateRules(fuzzyInputs,rules);
+  const{zStar,aggregatedPoints}=inferAndDefuzz(activations,dz);
+  return{fuzzyInputs,activations,aggregatedPoints,zStar};
+}
+
+function sampleSet(params,domain,steps){
+  steps=steps||400;
+  const[mn,mx]=domain,res=[];
+  for(let i=0;i<=steps;i++){
+    const x=mn+(i/steps)*(mx-mn);
+    res.push({x,y:membership(x,...params)});
+  }
+  return res;
+}
+
+// ============================================================
+// CHARTS
+// ============================================================
+// Paleta terra para os gráficos
+const PAL={
+  seco:        {line:'#c97a3a', fill:'rgba(201,122,58,0.18)'},
+  intermediario:{line:'#7a9e50',fill:'rgba(122,158,80,0.18)'},
+  umido:       {line:'#4a7eb8', fill:'rgba(74,126,184,0.18)'},
+  baixa:       {line:'#7a9e50', fill:'rgba(122,158,80,0.18)'},
+  media:       {line:'#c9a030', fill:'rgba(201,160,48,0.18)'},
+  alta:        {line:'#b8541a', fill:'rgba(184,84,26,0.18)'},
+  curto:       {line:'#7a9e50', fill:'rgba(122,158,80,0.2)'},
+  medio:       {line:'#c9a030', fill:'rgba(201,160,48,0.2)'},
+  longo:       {line:'#b8541a', fill:'rgba(184,84,26,0.2)'},
+};
+
+function mkOpt(xLabel,xMin,xMax){
+  return{
+    responsive:true, maintainAspectRatio:false,
+    animation:{duration:320},
+    plugins:{
+      legend:{position:'top',labels:{font:{family:'Inter',size:11},boxWidth:12,padding:8,color:'#5a3d20'}},
+      tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y.toFixed(3)}`}},
+    },
+    scales:{
+      x:{type:'linear',min:xMin,max:xMax,
+         grid:{color:'rgba(140,100,60,0.10)'},
+         ticks:{font:{family:'Inter',size:10},color:'#8a6a48'},
+         title:{display:true,text:xLabel,font:{family:'Inter',size:10},color:'#8a6a48'}},
+      y:{min:0,max:1.05,
+         grid:{color:'rgba(140,100,60,0.10)'},
+         ticks:{font:{family:'Inter',size:10},color:'#8a6a48',stepSize:0.25},
+         title:{display:true,text:'Pertinência',font:{family:'Inter',size:10},color:'#8a6a48'}},
+    },
+  };
+}
+
+function mkDS(label,pts,key,extra){
+  return Object.assign({
+    label, data:pts.map(p=>({x:p.x,y:p.y})),
+    borderColor:PAL[key].line, backgroundColor:PAL[key].fill,
+    fill:true, borderWidth:2, pointRadius:0, tension:0,
+  },extra||{});
+}
+
+function vLine(x,yMax,color,label){
+  return{label,data:[{x,y:0},{x,y:yMax}],borderColor:color,backgroundColor:'transparent',
+         fill:false,borderWidth:2,borderDash:[5,4],pointRadius:0,tension:0};
+}
+
+let cU=null,cT=null,cS=null;
+
+function buildUmidadeChart(U,fuzzyU){
+  const ctx=document.getElementById('chartUmidade').getContext('2d');
+  if(cU) cU.destroy();
+  const ds=[
+    mkDS('Seco',         sampleSet(SETS.umidade.seco,        [0,100]),'seco'),
+    mkDS('Intermediário',sampleSet(SETS.umidade.intermediario,[0,100]),'intermediario'),
+    mkDS('Úmido',        sampleSet(SETS.umidade.umido,       [0,100]),'umido'),
+  ];
+  if(U!=null) ds.push(vLine(U,1,'#2c1f0e','U='+U+'%'));
+  cU=new Chart(ctx,{type:'line',data:{datasets:ds},options:mkOpt('Umidade (%)',0,100)});
+  if(fuzzyU) updateBadges('badgeUmidade',fuzzyU);
+}
+
+function buildTempChart(T,fuzzyT){
+  const ctx=document.getElementById('chartTemp').getContext('2d');
+  if(cT) cT.destroy();
+  const ds=[
+    mkDS('Baixa',sampleSet(SETS.temperatura.baixa,[10,40]),'baixa'),
+    mkDS('Média',sampleSet(SETS.temperatura.media, [10,40]),'media'),
+    mkDS('Alta', sampleSet(SETS.temperatura.alta,  [10,40]),'alta'),
+  ];
+  if(T!=null) ds.push(vLine(T,1,'#2c1f0e','T='+T+'°C'));
+  cT=new Chart(ctx,{type:'line',data:{datasets:ds},options:mkOpt('Temperatura (°C)',10,40)});
+  if(fuzzyT) updateBadges('badgeTemp',fuzzyT);
+}
+
+function buildSaidaChart(activations,aggregatedPoints,zStar,highlightRule){
+  const ctx=document.getElementById('chartSaida').getContext('2d');
+  if(cS) cS.destroy();
+  const ds=[
+    mkDS('Curto',sampleSet(SETS.saida.curto,[0,30]),'curto',{borderWidth:1.5,fill:false,borderDash:[3,3]}),
+    mkDS('Médio',sampleSet(SETS.saida.medio,[0,30]),'medio',{borderWidth:1.5,fill:false,borderDash:[3,3]}),
+    mkDS('Longo',sampleSet(SETS.saida.longo,[0,30]),'longo',{borderWidth:1.5,fill:false,borderDash:[3,3]}),
+  ];
+  if(activations&&highlightRule!=null){
+    const rule=activations[highlightRule];
+    if(rule&&rule.h>0){
+      const cutPts=sampleSet(SETS.saida[rule.outSet],[0,30]).map(p=>({x:p.x,y:Math.min(rule.h,p.y)}));
+      ds.push({label:'R'+(highlightRule+1)+' recortada',data:cutPts,
+               borderColor:'#c9a030',backgroundColor:'rgba(201,160,48,0.28)',
+               fill:true,borderWidth:2,pointRadius:0,tension:0});
+    }
+  }
+  if(aggregatedPoints&&aggregatedPoints.length){
+    ds.push({label:'Área agregada',data:aggregatedPoints.map(p=>({x:p.z,y:p.mu})),
+             borderColor:'#7a4f2a',backgroundColor:'rgba(122,79,42,0.22)',
+             fill:true,borderWidth:2.5,pointRadius:0,tension:0});
+  }
+  if(zStar!=null) ds.push(vLine(zStar,1,'#b8541a','z*='+zStar.toFixed(2)+'min'));
+  cS=new Chart(ctx,{type:'line',data:{datasets:ds},options:mkOpt('Tempo (min)',0,30)});
+}
+
+const LABELS={seco:'Seco',intermediario:'Interm.',umido:'Úmido',
+              baixa:'Baixa',media:'Média',alta:'Alta',
+              curto:'Curto',medio:'Médio',longo:'Longo'};
+
+function updateBadges(id,values){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.innerHTML=Object.entries(values).map(([k,v])=>
+    `<span class="badge ${v>0?'badge-active':'badge-zero'}">
+       <span class="badge-label">${LABELS[k]||k}</span>
+       <span class="badge-val">${v.toFixed(3)}</span>
+     </span>`
+  ).join('');
+}
+
+// ============================================================
+// UI
+// ============================================================
+let state={rules:DEFAULT_RULES.map(r=>[...r]),result:null,currentStep:-1,highlightRule:null};
+
+function readInputs(){
+  return{
+    U:parseFloat(document.getElementById('inputU').value),
+    T:parseFloat(document.getElementById('inputT').value),
+    dz:parseFloat(document.getElementById('inputDz').value),
+  };
+}
+
+function validate(U,T,dz){
+  if(!isFinite(U)||isNaN(U)) return 'Umidade deve ser um número válido.';
+  if(!isFinite(T)||isNaN(T)) return 'Temperatura deve ser um número válido.';
+  if(U<0||U>100) return `Umidade fora do intervalo: ${U}% não está em [0, 100].`;
+  if(T<10||T>40) return `Temperatura fora do intervalo: ${T}°C não está em [10, 40].`;
+  if(![0.1,0.05,0.01].some(v=>Math.abs(dz-v)<0.0001)) return 'Passo Δz inválido.';
+  return null;
+}
+
+function clearLog(){
+  document.getElementById('logPanel').innerHTML=
+    '<p class="log-hint">Execute o cálculo ou avance pelas etapas para ver o detalhamento aqui.</p>';
+}
+
+function logSection(t){
+  const p=document.getElementById('logPanel');
+  p.querySelector('.log-hint')&&p.querySelector('.log-hint').remove();
+  const el=document.createElement('div'); el.className='log-section'; el.textContent=t; p.appendChild(el);
+}
+
+function logLine(html){
+  const p=document.getElementById('logPanel');
+  p.querySelector('.log-hint')&&p.querySelector('.log-hint').remove();
+  const el=document.createElement('div'); el.className='log-line'; el.innerHTML=html; p.appendChild(el);
+  p.scrollTop=p.scrollHeight;
+}
+
+function updateStepIndicator(step){
+  document.querySelectorAll('.step-dot').forEach((dot,i)=>{
+    dot.classList.remove('active','done');
+    if(i+1<step)  dot.classList.add('done');
+    if(i+1===step) dot.classList.add('active');
+  });
+}
+
+function markStale(){
+  state.result=null; state.currentStep=-1; state.highlightRule=null;
+  document.getElementById('resultBox').classList.add('stale');
+  document.getElementById('resultValue').textContent='—';
+  document.querySelectorAll('.step-dot').forEach(d=>d.classList.remove('done','active'));
+  clearLog();
+}
+
+function showError(msg){document.getElementById('errorMsg').textContent=msg;document.getElementById('errorMsg').style.display='block';}
+function hideError(){document.getElementById('errorMsg').style.display='none';}
+
+function renderRuleCards(activations){
+  const container=document.getElementById('ruleCards');
+  container.innerHTML='';
+  state.rules.forEach(([uSet,tSet,outSet],i)=>{
+    const act=activations?activations[i]:null;
+    const h=act?act.h:null;
+    const isActive=h!==null&&h>0;
+    const isZero=h!==null&&h===0;
+
+    const card=document.createElement('div');
+    card.className=`rule-card${isActive?' rule-active':''}${isZero?' rule-zero':''}${state.highlightRule===i?' rule-highlight':''}`;
+
+    const hBar=h!==null
+      ?`<div class="rule-activation">
+          <div class="h-bar-track"><div class="h-bar-fill" style="width:${(h*100).toFixed(1)}%"></div></div>
+          <span class="h-val">${h.toFixed(3)}</span>
+        </div>`:'' ;
+
+    card.innerHTML=`
+      <div class="rule-header">
+        <span class="rule-num">R${i+1}</span>
+        <span class="rule-out tag-${outSet}">${LABELS[outSet]}</span>
+      </div>
+      <div class="rule-body"><span class="rule-ant"><b>${LABELS[uSet]}</b> ∧ <b>${LABELS[tSet]}</b></span></div>
+      ${hBar}`;
+
+    const sel=document.createElement('select'); sel.className='rule-sel';
+    ['curto','medio','longo'].forEach(opt=>{
+      const o=document.createElement('option');
+      o.value=opt; o.textContent=LABELS[opt];
+      if(opt===outSet) o.selected=true;
+      sel.appendChild(o);
+    });
+    sel.addEventListener('change',()=>{state.rules[i][2]=sel.value;markStale();renderRuleCards();});
+    card.appendChild(sel);
+
+    if(isActive){
+      card.addEventListener('click',e=>{
+        if(e.target.tagName==='SELECT'||e.target.tagName==='OPTION') return;
+        state.highlightRule=(state.highlightRule===i)?null:i;
+        renderRuleCards(state.result&&state.result.activations);
+        buildSaidaChart(state.result.activations,state.result.aggregatedPoints,state.result.zStar,state.highlightRule);
+        switchTab('saida');
+      });
+    }
+    container.appendChild(card);
+  });
+}
+
+function runStep(step,result){
+  const{U,T,dz}=readInputs();
+  const{fuzzyInputs,activations,aggregatedPoints,zStar}=result;
+  switch(step){
+    case 1:
+      logSection('① Fuzzificação');
+      logLine(`Umidade <b>U=${U}%</b> → seco=${fuzzyInputs.umidade.seco.toFixed(4)}, intermediário=${fuzzyInputs.umidade.intermediario.toFixed(4)}, úmido=${fuzzyInputs.umidade.umido.toFixed(4)}`);
+      logLine(`Temperatura <b>T=${T}°C</b> → baixa=${fuzzyInputs.temperatura.baixa.toFixed(4)}, média=${fuzzyInputs.temperatura.media.toFixed(4)}, alta=${fuzzyInputs.temperatura.alta.toFixed(4)}`);
+      buildUmidadeChart(U,fuzzyInputs.umidade);
+      buildTempChart(T,fuzzyInputs.temperatura);
+      buildSaidaChart();
+      break;
+    case 2:
+      logSection('② Avaliação das regras (E = mínimo)');
+      activations.forEach((a,i)=>{
+        logLine(`${a.h>0?'✓':'✗'} R${i+1}: min(${a.muU.toFixed(4)}, ${a.muT.toFixed(4)}) = <b>${a.h.toFixed(4)}</b> → ${a.outSet}`);
+      });
+      renderRuleCards(activations);
+      break;
+    case 3:
+      logSection('③ Implicação (recorte dos consequentes)');
+      activations.forEach((a,i)=>{ if(a.h>0) logLine(`R${i+1}: consequente <i>${a.outSet}</i> recortado em h=${a.h.toFixed(4)}`); });
+      const first=activations.findIndex(a=>a.h>0);
+      if(first>=0){state.highlightRule=first;renderRuleCards(activations);}
+      buildSaidaChart(activations,null,null,state.highlightRule);
+      switchTab('saida');
+      break;
+    case 4:
+      logSection('④ Agregação (máximo entre recortes)');
+      logLine('μ_agregada(z) = max de todos os recortes ativos em cada z');
+      [0,3,7.5,15,22.5,30].forEach(z=>{
+        const pt=aggregatedPoints.find(p=>Math.abs(p.z-z)<0.11);
+        if(pt) logLine(`μ(${z}) = ${pt.mu.toFixed(4)}`);
+      });
+      buildSaidaChart(activations,aggregatedPoints,null,state.highlightRule);
+      switchTab('saida');
+      break;
+    case 5:
+      logSection('⑤ Defuzzificação (centroide)');
+      if(zStar===null){
+        logLine('<span style="color:#b8541a">Denominador zero — sem saída agregada válida.</span>');
+      } else {
+        logLine(`Δz=${dz} → N=${Math.round(30/dz)} pontos`);
+        logLine(`Centroide: <b>z* = ${zStar.toFixed(6)} min</b>`);
+        logLine(`Exibição: <b>${zStar.toFixed(2)} min</b>`);
+        document.getElementById('resultValue').textContent=zStar.toFixed(2);
+        document.getElementById('resultBox').classList.remove('stale');
+      }
+      buildSaidaChart(activations,aggregatedPoints,zStar,state.highlightRule);
+      switchTab('saida');
+      break;
+  }
+  updateStepIndicator(step);
+}
+
+function calcularTudo(){
+  clearLog();
+  const{U,T,dz}=readInputs();
+  const err=validate(U,T,dz);
+  if(err){showError(err);return;} hideError();
+  const result=runInference(U,T,state.rules,dz);
+  state.result=result; state.currentStep=5; state.highlightRule=null;
+  for(let s=1;s<=5;s++) runStep(s,result);
+}
+
+function avancarEtapa(){
+  const{U,T,dz}=readInputs();
+  const err=validate(U,T,dz);
+  if(err){showError(err);return;} hideError();
+  if(!state.result){state.result=runInference(U,T,state.rules,dz);state.currentStep=0;}
+  if(state.currentStep>=5){logSection('— Todas as etapas concluídas. Altere as entradas ou restaure para recalcular. —');return;}
+  state.currentStep++;
+  runStep(state.currentStep,state.result);
+}
+
+function restaurarPadrao(){
+  state.rules=DEFAULT_RULES.map(r=>[...r]);
+  state.result=null;state.currentStep=-1;state.highlightRule=null;
+  document.getElementById('inputU').value=35; document.getElementById('sliderU').value=35;
+  document.getElementById('inputT').value=30; document.getElementById('sliderT').value=30;
+  document.getElementById('inputDz').value=0.1;
+  markStale(); renderRuleCards();
+  buildUmidadeChart(); buildTempChart(); buildSaidaChart();
+  hideError();
+  updateBadges('badgeUmidade',{seco:0,intermediario:0,umido:0});
+  updateBadges('badgeTemp',{baixa:0,media:0,alta:0});
+}
+
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+tab));
+}
+
+function syncSlider(sid,iid,mn,mx){
+  const s=document.getElementById(sid),inp=document.getElementById(iid);
+  s.addEventListener('input',()=>{inp.value=s.value;markStale();});
+  inp.addEventListener('input',()=>{const v=parseFloat(inp.value);if(isFinite(v)&&v>=mn&&v<=mx)s.value=v;markStale();});
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  syncSlider('sliderU','inputU',0,100);
+  syncSlider('sliderT','inputT',10,40);
+  document.getElementById('inputDz').addEventListener('change',markStale);
+  document.getElementById('btnCalcular').addEventListener('click',calcularTudo);
+  document.getElementById('btnAvancar').addEventListener('click',avancarEtapa);
+  document.getElementById('btnRestaurar').addEventListener('click',restaurarPadrao);
+  document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>switchTab(btn.dataset.tab)));
+  buildUmidadeChart(); buildTempChart(); buildSaidaChart();
+  renderRuleCards(); clearLog();
+  updateBadges('badgeUmidade',{seco:0,intermediario:0,umido:0});
+  updateBadges('badgeTemp',{baixa:0,media:0,alta:0});
+});
+</script>
+</body>
+</html>

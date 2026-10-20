@@ -395,6 +395,7 @@ select:focus { border-color: var(--burnt); }
   .bottom-section { grid-template-columns: 1fr; max-height: none; }
   .rules-panel { border-right: none; border-bottom: 1px solid var(--border2); }
 }
+  .rule-min { font-size:10px; font-family:'JetBrains Mono',monospace; color:#7a5a3a; margin:2px 0 4px; }
 </style>
 </head>
 <body>
@@ -407,7 +408,7 @@ select:focus { border-color: var(--burnt); }
       <p>Inferência Mamdani · UFPI · Inteligência Artificial 2026.2</p>
     </div>
   </div>
-  <a class="repo-link" href="https://github.com/" target="_blank">⎇ Repositório</a>
+  <a class="repo-link" href="https://github.com/MonnikLuianne/simulador-de-um-sistema-fuzzy" target="_blank" rel="noopener">⎇ Repositório</a>
 </header>
 
 <nav class="step-pipeline">
@@ -564,6 +565,16 @@ function inferAndDefuzz(activations,dz){
   }
   if(sumD===0) return{zStar:null,aggregatedPoints:pts};
   return{zStar:sumN/sumD,aggregatedPoints:pts};
+}
+
+// μ agregada calculada exatamente em um ponto z (usada no log de conferência)
+function aggregatedAt(z,activations){
+  let mu=0;
+  for(const{outSet,h} of activations){
+    if(h===0) continue;
+    mu=Math.max(mu,Math.min(h,membership(z,...SETS.saida[outSet])));
+  }
+  return mu;
 }
 
 function runInference(U,T,rules,dz){
@@ -785,6 +796,7 @@ function renderRuleCards(activations){
         <span class="rule-out tag-${outSet}">${LABELS[outSet]}</span>
       </div>
       <div class="rule-body"><span class="rule-ant"><b>${LABELS[uSet]}</b> ∧ <b>${LABELS[tSet]}</b></span></div>
+      ${act?`<div class="rule-min">min(${act.muU.toFixed(3)}; ${act.muT.toFixed(3)}) = <b>${act.h.toFixed(3)}</b></div>`:''}
       ${hBar}`;
 
     const sel=document.createElement('select'); sel.className='rule-sel';
@@ -840,9 +852,9 @@ function runStep(step,result){
     case 4:
       logSection('④ Agregação (máximo entre recortes)');
       logLine('μ_agregada(z) = max de todos os recortes ativos em cada z');
+      // Valores calculados exatamente em cada z (não no ponto amostrado mais próximo)
       [0,3,7.5,15,22.5,30].forEach(z=>{
-        const pt=aggregatedPoints.find(p=>Math.abs(p.z-z)<0.11);
-        if(pt) logLine(`μ(${z}) = ${pt.mu.toFixed(4)}`);
+        logLine(`μ(${String(z).replace('.',',')}) = ${aggregatedAt(z,activations).toFixed(4)}`);
       });
       buildSaidaChart(activations,aggregatedPoints,null,state.highlightRule);
       switchTab('saida');

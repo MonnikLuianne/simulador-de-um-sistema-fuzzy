@@ -17,8 +17,8 @@
 | Guilherme Ribeiro Nunes Batista |
 
 **Links:**
-- Aplicação publicada (GitHub Pages): *[(preencher após publicar)](https://monnikluianne.github.io/simulador-de-um-sistema-fuzzy/)*
-- Repositório público (GitHub): *[(preencher)](https://github.com/MonnikLuianne/simulador-de-um-sistema-fuzzy)*
+- Aplicação publicada (GitHub Pages): https://monnikluianne.github.io/simulador-de-um-sistema-fuzzy/
+- Repositório público (GitHub): https://github.com/MonnikLuianne/simulador-de-um-sistema-fuzzy
 
 ---
 
@@ -175,7 +175,7 @@ O centroide é o centro de massa da área. Se a área pesa mais à direita, z* s
 3. A URL será do tipo: `file:///caminho/para/index.html`
 
 ### Execução via GitHub Pages
-1. Acesse: *(preencher o link após publicar)*
+1. Acesse: https://monnikluianne.github.io/simulador-de-um-sistema-fuzzy/
 2. Sem login, sem instalação
 
 ### Como usar a interface
@@ -226,55 +226,77 @@ Exibe em tempo real: graus de pertinência, ativações de cada regra, pontos de
 
 ## 8. Resultados dos Testes de Validação
 
-### 8.1 Pertinências (U = 35%, T = 30 °C)
-| Conjunto | Esperado | Obtido |
+Salvo indicação contrária: base de regras padrão (seção 4) e Δz = 0,1 min. Os valores "obtidos" foram produzidos pela aplicação e conferidos com a tolerância do enunciado (0,000001 para pertinências e ativações; 0,01 min para tempos). Internamente nada é arredondado; só a exibição usa casas decimais.
+
+### 8.1 Pertinências e extremos
+
+| Entrada | Esperado (seco; interm.; úmido) ou (baixa; média; alta) | Obtido | Conclusão |
+|---|---|---|---|
+| U = 35% | 0,5; 0,5; 0 | 0,5; 0,5; 0 | ✓ |
+| T = 30 °C | 0; 0,5; 0,5 | 0; 0,5; 0,5 | ✓ |
+| U = 0% | 1; 0; 0 | 1; 0; 0 | ✓ |
+| U = 100% | 0; 0; 1 | 0; 0; 1 | ✓ |
+| T = 10 °C | 1; 0; 0 | 1; 0; 0 | ✓ |
+| T = 40 °C | 0; 0; 1 | 0; 0; 1 | ✓ |
+
+Nenhuma divisão por zero ocorre: o trecho de pertinência 1 é avaliado antes das rampas, e rampas com `a = b` ou `c = d` não são calculadas.
+
+### 8.2 Ativação de uma única regra
+
+| Entrada | Regra ativada | Esperado | Obtido (z*) | Exibido | Conclusão |
+|---|---|---|---|---|---|
+| U = 20%, T = 35 °C | só R3, h = 1 (longo completo) | ≈ 25,00 min | 24,999889 | 25,00 min | ✓ |
+| U = 50%, T = 25 °C | só R5, h = 1 (médio completo) | 15,00 min | 15,000000 | 15,00 min | ✓ |
+| U = 80%, T = 25 °C | só R8, h = 1 (curto completo) | ≈ 5,00 min | 5,000111 | 5,00 min | ✓ |
+
+**Conclusão:** os tempos 5 e 25 são os centroides dos triângulos curto e longo (um terço da base a partir do ângulo reto), e não os picos (0 e 30). Por isso, solo úmido não leva a tempo zero neste modelo. A pequena diferença em relação a 5 e 25 vem da aproximação por pontos médios com Δz = 0,1.
+
+### 8.3 Inferência completa com sobreposição
+
+**Entrada:** U = 35%, T = 30 °C, base padrão, Δz = 0,1.
+
+| Etapa | Obtido |
+|---|---|
+| Fuzzificação | seco = 0,5; intermediário = 0,5; úmido = 0; baixa = 0; média = 0,5; alta = 0,5 |
+| Avaliação | R2 = min(0,5; 0,5) = 0,5 → longo; R3 = 0,5 → longo; R5 = 0,5 → médio; R6 = 0,5 → longo; demais = 0 |
+| Implicação | médio e longo recortados na altura 0,5 (as três regras que concluem longo não elevam a altura acima de 0,5) |
+| Agregação (máximo) | μ(0) = 0; μ(3) = 0,2; μ(7,5) = 0,5; μ(15) = 0,5; μ(30) = 0,5 — ou seja, z/15 em [0; 7,5] e 0,5 em [7,5; 30] |
+| Defuzzificação | z* = **16,785683 min**, exibido como **16,79 min** |
+
+**Conclusão:** todos os valores coincidem com a referência. O log da aplicação calcula μ exatamente em cada z conferido.
+
+### 8.4 Simetria, alteração de regras e precisão
+
+| Teste | Esperado | Obtido | Conclusão |
+|---|---|---|---|
+| U = 35%, T = 20 °C | R1, R2, R4, R5 com h = 0,5; agregação constante 0,5; 15,00 min | R1, R2, R4, R5 = 0,5; agregação 0,5 em todos os pontos; 15,000000 → **15,00 min** | ✓ |
+| Todas as regras → curto; U = 50%, T = 25 °C | ≈ 5,00 min | 5,000111 → **5,00 min** | ✓ |
+| Restaurar padrão | entradas 35% e 30 °C, Δz = 0,1, base da seção 4 | U = 35, T = 30, Δz = 0,1, regras médio, longo, longo, curto, médio, longo, curto, curto, curto | ✓ |
+| Calcular após restaurar | 16,79 min | **16,79 min** | ✓ |
+
+**Efeito do passo Δz** (U = 35%, T = 30 °C; centroide contínuo = 16,785714 min):
+
+| Δz | Esperado | Obtido | Diferença para o contínuo |
+|---|---|---|---|
+| 0,1 | ≈ 16,785683 | 16,785683 | 0,000031 |
+| 0,05 | ≈ 16,785706 | 16,785706 | 0,000008 |
+| 0,01 | ≈ 16,785714 | 16,785714 | < 0,000001 |
+
+**Análise:** o método de pontos médios aproxima a integral do centroide por uma soma. O único trecho em que a área agregada não é constante é a rampa z/15 em [0; 7,5], e é ali que surge o erro de discretização. Cada vez que o passo é dividido por 2, o erro cai cerca de 4 vezes (0,000031 → 0,000008), comportamento esperado para pontos médios (erro proporcional a Δz²). Com Δz = 0,01 o resultado já coincide com o contínuo na sexta casa. Com duas casas decimais os três passos exibem 16,79, mas a precisão interna melhora com passos menores.
+
+### 8.5 Validação da interface e determinismo
+
+| Entrada | Comportamento obtido | Conclusão |
 |---|---|---|
-| seco | 0,5000 | *(preencher)* |
-| intermediário | 0,5000 | *(preencher)* |
-| úmido | 0,0000 | *(preencher)* |
-| baixa | 0,0000 | *(preencher)* |
-| média | 0,5000 | *(preencher)* |
-| alta | 0,5000 | *(preencher)* |
+| U = −1% | "Umidade fora do intervalo: -1% não está em [0, 100]." — cálculo bloqueado | ✓ |
+| U = 101% | "Umidade fora do intervalo: 101% não está em [0, 100]." — cálculo bloqueado | ✓ |
+| T = 9 °C | "Temperatura fora do intervalo: 9°C não está em [10, 40]." — cálculo bloqueado | ✓ |
+| T = 41 °C | "Temperatura fora do intervalo: 41°C não está em [10, 40]." — cálculo bloqueado | ✓ |
+| Umidade ou temperatura vazia / não numérica | "… deve ser um número válido." — cálculo bloqueado | ✓ |
 
-### 8.2 Ativação de regra única
-| Entrada | Regra | h esperado | Tempo esperado | Obtido |
-|---|---|---|---|---|
-| U=20%, T=35°C | R3 (longo) | 1,0 | ≈ 25,00 min | *(preencher)* |
-| U=50%, T=25°C | R5 (médio) | 1,0 | 15,00 min | *(preencher)* |
-| U=80%, T=25°C | R8 (curto) | 1,0 | ≈ 5,00 min | *(preencher)* |
+Nenhuma entrada é corrigida silenciosamente para o limite mais próximo. Alterar entradas, regras ou Δz limpa o resultado anterior e reinicia a sequência de etapas.
 
-### 8.3 Inferência com sobreposição (caso principal)
-**U=35%, T=30°C, base padrão, Δz=0,1**
-- Regras ativas: R2(h=0,5→longo), R3(h=0,5→longo), R5(h=0,5→médio), R6(h=0,5→longo)
-- μ_agregada: z/15 em [0, 7,5]; 0,5 em [7,5, 30]
-- Tempo esperado: **16,79 min** | Obtido: *(preencher)*
-
-### 8.4 Simetria (U=35%, T=20°C)
-- R1, R2, R4, R5 ativas com h=0,5
-- Área agregada constante em 0,5 em [0, 30]
-- Tempo esperado: **15,00 min** | Obtido: *(preencher)*
-
-### 8.5 Efeito do passo Δz (U=35%, T=30°C)
-| Δz | Esperado | Obtido |
-|---|---|---|
-| 0,1 | ≈ 16,785683 min | *(preencher)* |
-| 0,05 | ≈ 16,785706 min | *(preencher)* |
-| 0,01 | ≈ 16,785714 min | *(preencher)* |
-
-**Análise do efeito do passo:** passos menores aproximam o somatório discreto da integral contínua (centroide exato: 16,785714 min). O valor exibido com duas casas decimais é 16,79 nos três casos, mas a precisão interna aumenta com Δz menor, reduzindo o erro de discretização.
-
-### 8.6 Alteração de regras
-- Todas as regras → curto; U=50%, T=25°C → esperado ≈ 5,00 min | Obtido: *(preencher)*
-- Após Restaurar padrão; U=35%, T=30°C → esperado 16,79 min | Obtido: *(preencher)*
-
-### 8.7 Entradas inválidas
-| Entrada | Comportamento | Verificado |
-|---|---|---|
-| U = −1% | Erro exibido, cálculo bloqueado | *(✓/✗)* |
-| U = 101% | Erro exibido, cálculo bloqueado | *(✓/✗)* |
-| T = 9 °C | Erro exibido, cálculo bloqueado | *(✓/✗)* |
-| T = 41 °C | Erro exibido, cálculo bloqueado | *(✓/✗)* |
-| Campo vazio | Erro exibido, cálculo bloqueado | *(✓/✗)* |
+**Determinismo:** repetir a mesma configuração produz os mesmos graus, ativações, área agregada e tempo final. Clicar em **Calcular** ou percorrer as cinco etapas com **Avançar etapa** dá o mesmo resultado (16,79 min no caso 8.3), pois os dois caminhos usam a mesma função de inferência. Os gráficos apenas exibem os valores calculados.
 
 ---
 
@@ -291,6 +313,9 @@ Todo o sistema de inferência Mamdani (fuzzificação, avaliação, implicação
 ## 10. Estrutura do Repositório
 
 ```
-fuzzy-irrigation/
-└── index.html    # aplicação completa — HTML, CSS e JS em arquivo único
+simulador-de-um-sistema-fuzzy/
+├── index.html    # aplicação completa — HTML, CSS e JavaScript em um único arquivo
+└── README.md
 ```
+
+O núcleo Mamdani (funções `membership`, `fuzzify`, `evaluateRules`, `inferAndDefuzz` e `runInference`) está no início do `<script>` do `index.html`, separado do código dos gráficos e da interface.

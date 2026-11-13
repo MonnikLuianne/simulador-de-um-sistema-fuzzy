@@ -522,7 +522,7 @@ function mkOpt(xLabel,xMin,xMax){
     animation:{duration:320},
     plugins:{
       legend:{position:'top',labels:{font:{family:'Inter',size:11},boxWidth:12,padding:8,color:'#5a3d20'}},
-      tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y.toFixed(3)}`}},
+      tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y.toFixed(3).replace('.',',')}`}},
     },
     scales:{
       x:{type:'linear',min:xMin,max:xMax,
@@ -561,7 +561,7 @@ function buildUmidadeChart(U,fuzzyU){
     mkDS('Intermediário',sampleSet(SETS.umidade.intermediario,[0,100]),'intermediario'),
     mkDS('Úmido',        sampleSet(SETS.umidade.umido,       [0,100]),'umido'),
   ];
-  if(U!=null) ds.push(vLine(U,1,'#2c1f0e','U='+U+'%'));
+  if(U!=null) ds.push(vLine(U,1,'#2c1f0e','U='+String(U).replace('.',',')+'%'));
   cU=new Chart(ctx,{type:'line',data:{datasets:ds},options:mkOpt('Umidade (%)',0,100)});
   if(fuzzyU) updateBadges('badgeUmidade',fuzzyU);
 }
@@ -574,7 +574,7 @@ function buildTempChart(T,fuzzyT){
     mkDS('Média',sampleSet(SETS.temperatura.media, [10,40]),'media'),
     mkDS('Alta', sampleSet(SETS.temperatura.alta,  [10,40]),'alta'),
   ];
-  if(T!=null) ds.push(vLine(T,1,'#2c1f0e','T='+T+'°C'));
+  if(T!=null) ds.push(vLine(T,1,'#2c1f0e','T='+String(T).replace('.',',')+' °C'));
   cT=new Chart(ctx,{type:'line',data:{datasets:ds},options:mkOpt('Temperatura (°C)',10,40)});
   if(fuzzyT) updateBadges('badgeTemp',fuzzyT);
 }
@@ -601,7 +601,7 @@ function buildSaidaChart(activations,aggregatedPoints,zStar,highlightRule){
              borderColor:'#7a4f2a',backgroundColor:'rgba(122,79,42,0.22)',
              fill:true,borderWidth:2.5,pointRadius:0,tension:0});
   }
-  if(zStar!=null) ds.push(vLine(zStar,1,'#b8541a','z*='+zStar.toFixed(2)+'min'));
+  if(zStar!=null) ds.push(vLine(zStar,1,'#b8541a','z*='+zStar.toFixed(2).replace('.',',')+'min'));
   cS=new Chart(ctx,{type:'line',data:{datasets:ds},options:mkOpt('Tempo (min)',0,30)});
 }
 
@@ -615,7 +615,7 @@ function updateBadges(id,values){
   el.innerHTML=Object.entries(values).map(([k,v])=>
     `<span class="badge ${v>0?'badge-active':'badge-zero'}">
        <span class="badge-label">${LABELS[k]||k}</span>
-       <span class="badge-val">${v.toFixed(3)}</span>
+       <span class="badge-val">${v.toFixed(3).replace('.',',')}</span>
      </span>`
   ).join('');
 }
@@ -645,10 +645,16 @@ function readInputs(){
 }
 
 function validate(U,T,dz){
+  const rawU=document.getElementById('inputU').value.trim();
+  const rawT=document.getElementById('inputT').value.trim();
+  if(document.getElementById('inputU').validity.badInput) return 'Umidade deve ser um número válido.';
+  if(document.getElementById('inputT').validity.badInput) return 'Temperatura deve ser um número válido.';
+  if(rawU==='') return 'Umidade: o campo está vazio. Informe um valor entre 0% e 100%.';
+  if(rawT==='') return 'Temperatura: o campo está vazio. Informe um valor entre 10 °C e 40 °C.';
   if(!isFinite(U)||isNaN(U)) return 'Umidade deve ser um número válido.';
   if(!isFinite(T)||isNaN(T)) return 'Temperatura deve ser um número válido.';
-  if(U<0||U>100) return `Umidade fora do intervalo: ${U}% não está em [0, 100].`;
-  if(T<10||T>40) return `Temperatura fora do intervalo: ${T}°C não está em [10, 40].`;
+  if(U<0||U>100) return `Umidade fora do intervalo: ${String(U).replace('.',',')}% não está em [0, 100].`;
+  if(T<10||T>40) return `Temperatura fora do intervalo: ${String(T).replace('.',',')} °C não está em [10, 40].`;
   if(![0.1,0.05,0.01].some(v=>Math.abs(dz-v)<0.0001)) return 'Passo Δz inválido.';
   return null;
 }
@@ -718,7 +724,7 @@ function renderRuleCards(activations){
     const hBar=h!==null
       ?`<div class="rule-activation">
           <div class="h-bar-track"><div class="h-bar-fill" style="width:${(h*100).toFixed(1)}%"></div></div>
-          <span class="h-val">${h.toFixed(3)}</span>
+          <span class="h-val">${h.toFixed(3).replace('.',',')}</span>
         </div>`:'' ;
 
     card.innerHTML=`
@@ -727,7 +733,7 @@ function renderRuleCards(activations){
         <span class="rule-out tag-${outSet}">${LABELS[outSet]}</span>
       </div>
       <div class="rule-body"><span class="rule-ant"><b>${LABELS[uSet]}</b> ∧ <b>${LABELS[tSet]}</b></span></div>
-      ${act?`<div class="rule-min">min(${act.muU.toFixed(3)}; ${act.muT.toFixed(3)}) = <b>${act.h.toFixed(3)}</b></div>`:''}
+      ${act?`<div class="rule-min">min(${act.muU.toFixed(3).replace('.',',')}; ${act.muT.toFixed(3).replace('.',',')}) = <b>${act.h.toFixed(3).replace('.',',')}</b></div>`:''}
       ${hBar}`;
 
     const sel=document.createElement('select'); sel.className='rule-sel';
@@ -745,7 +751,13 @@ function renderRuleCards(activations){
         if(e.target.tagName==='SELECT'||e.target.tagName==='OPTION') return;
         state.highlightRule=(state.highlightRule===i)?null:i;
         renderRuleCards(state.result&&state.result.activations);
-        buildSaidaChart(state.result.activations,state.result.aggregatedPoints,state.result.zStar,state.highlightRule);
+        // No modo passo a passo, só mostra a área agregada (etapa 4) e o
+        // centroide (etapa 5) depois que essas etapas forem alcançadas.
+        const st=state.currentStep;
+        buildSaidaChart(state.result.activations,
+          st>=4?state.result.aggregatedPoints:null,
+          st>=5?state.result.zStar:null,
+          state.highlightRule);
         switchTab('saida');
       });
     }
@@ -760,8 +772,8 @@ function runStep(step,result){
   switch(step){
     case 1:
       logSection('① Fuzzificação');
-      logLine(`Umidade <b>U=${U}%</b> → seco=${fuzzyInputs.umidade.seco.toFixed(4)}, intermediário=${fuzzyInputs.umidade.intermediario.toFixed(4)}, úmido=${fuzzyInputs.umidade.umido.toFixed(4)}`);
-      logLine(`Temperatura <b>T=${T}°C</b> → baixa=${fuzzyInputs.temperatura.baixa.toFixed(4)}, média=${fuzzyInputs.temperatura.media.toFixed(4)}, alta=${fuzzyInputs.temperatura.alta.toFixed(4)}`);
+      logLine(`Umidade <b>U=${String(U).replace('.',',')}%</b> → seco=${fuzzyInputs.umidade.seco.toFixed(4).replace('.',',')}; intermediário=${fuzzyInputs.umidade.intermediario.toFixed(4).replace('.',',')}; úmido=${fuzzyInputs.umidade.umido.toFixed(4).replace('.',',')}`);
+      logLine(`Temperatura <b>T=${String(T).replace('.',',')} °C</b> → baixa=${fuzzyInputs.temperatura.baixa.toFixed(4).replace('.',',')}; média=${fuzzyInputs.temperatura.media.toFixed(4).replace('.',',')}; alta=${fuzzyInputs.temperatura.alta.toFixed(4).replace('.',',')}`);
       buildUmidadeChart(U,fuzzyInputs.umidade);
       buildTempChart(T,fuzzyInputs.temperatura);
       buildSaidaChart();
@@ -769,13 +781,13 @@ function runStep(step,result){
     case 2:
       logSection('② Avaliação das regras (E = mínimo)');
       activations.forEach((a,i)=>{
-        logLine(`${a.h>0?'✓':'✗'} R${i+1}: min(${a.muU.toFixed(4)}, ${a.muT.toFixed(4)}) = <b>${a.h.toFixed(4)}</b> → ${a.outSet}`);
+        logLine(`${a.h>0?'✓':'✗'} R${i+1}: min(${a.muU.toFixed(4).replace('.',',')}; ${a.muT.toFixed(4).replace('.',',')}) = <b>${a.h.toFixed(4).replace('.',',')}</b> → ${a.outSet}`);
       });
       renderRuleCards(activations);
       break;
     case 3:
       logSection('③ Implicação (recorte dos consequentes)');
-      activations.forEach((a,i)=>{ if(a.h>0) logLine(`R${i+1}: consequente <i>${a.outSet}</i> recortado em h=${a.h.toFixed(4)}`); });
+      activations.forEach((a,i)=>{ if(a.h>0) logLine(`R${i+1}: consequente <i>${a.outSet}</i> recortado em h=${a.h.toFixed(4).replace('.',',')}`); });
       const first=activations.findIndex(a=>a.h>0);
       if(first>=0){state.highlightRule=first;renderRuleCards(activations);}
       buildSaidaChart(activations,null,null,state.highlightRule);
@@ -786,7 +798,7 @@ function runStep(step,result){
       logLine('μ_agregada(z) = max de todos os recortes ativos em cada z');
       // Valores calculados exatamente em cada z (não no ponto amostrado mais próximo)
       [0,3,7.5,15,22.5,30].forEach(z=>{
-        logLine(`μ(${String(z).replace('.',',')}) = ${aggregatedAt(z,activations).toFixed(4)}`);
+        logLine(`μ(${String(z).replace('.',',')}) = ${aggregatedAt(z,activations).toFixed(4).replace('.',',')}`);
       });
       buildSaidaChart(activations,aggregatedPoints,null,state.highlightRule);
       switchTab('saida');
@@ -796,10 +808,10 @@ function runStep(step,result){
       if(zStar===null){
         logLine('<span style="color:#b8541a">Denominador zero — sem saída agregada válida.</span>');
       } else {
-        logLine(`Δz=${dz} → N=${Math.round(30/dz)} pontos`);
-        logLine(`Centroide: <b>z* = ${zStar.toFixed(6)} min</b>`);
-        logLine(`Exibição: <b>${zStar.toFixed(2)} min</b>`);
-        document.getElementById('resultValue').textContent=zStar.toFixed(2);
+        logLine(`Δz=${String(dz).replace('.',',')} → N=${Math.round(30/dz)} pontos`);
+        logLine(`Centroide: <b>z* = ${zStar.toFixed(6).replace('.',',')} min</b>`);
+        logLine(`Exibição: <b>${zStar.toFixed(2).replace('.',',')} min</b>`);
+        document.getElementById('resultValue').textContent=zStar.toFixed(2).replace('.',',');
         document.getElementById('resultBox').classList.remove('stale');
       }
       buildSaidaChart(activations,aggregatedPoints,zStar,state.highlightRule);

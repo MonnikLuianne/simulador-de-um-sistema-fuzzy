@@ -170,7 +170,7 @@ O centroide é o centro de massa da área. Se a área pesa mais à direita, z* s
 - Nenhuma instalação ou servidor necessário
 
 ### Execução local
-1. Baixe o arquivo `index.html`
+1. Baixe o repositório completo (o `index.html` usa o arquivo `js/fuzzy.js`)
 2. Dê dois cliques no arquivo — abre direto no navegador
 3. A URL será do tipo: `file:///caminho/para/index.html`
 
@@ -225,6 +225,8 @@ Exibe em tempo real: graus de pertinência, ativações de cada regra, pontos de
 ---
 
 ## 8. Resultados dos Testes de Validação
+
+Os testes desta seção podem ser refeitos abrindo a página **[`testes.html`](https://monnikluianne.github.io/simulador-de-um-sistema-fuzzy/testes.html)** (link "Testes de validação" no topo do simulador). Ela executa as verificações da seção 6 do enunciado com as mesmas funções do simulador (`js/fuzzy.js`) e mostra o que passou ou falhou.
 
 Salvo indicação contrária: base de regras padrão (seção 4) e Δz = 0,1 min. Os valores "obtidos" foram produzidos pela aplicação e conferidos com a tolerância do enunciado (0,000001 para pertinências e ativações; 0,01 min para tempos). Internamente nada é arredondado; só a exibição usa casas decimais.
 
@@ -314,8 +316,13 @@ Todo o sistema de inferência Mamdani (fuzzificação, avaliação, implicação
 
 ```
 simulador-de-um-sistema-fuzzy/
-├── index.html    # aplicação completa — HTML, CSS e JavaScript em um único arquivo
+├── index.html    # interface, gráficos (Chart.js) e controles
+├── testes.html   # testes de validação da seção 6, executados no navegador
+├── js/
+│   └── fuzzy.js  # núcleo Mamdani, usado pelo simulador e pelos testes
 └── README.md
 ```
 
-O núcleo Mamdani (funções `membership`, `fuzzify`, `evaluateRules`, `inferAndDefuzz` e `runInference`) está no início do `<script>` do `index.html`, separado do código dos gráficos e da interface.
+O núcleo Mamdani (funções `membership`, `fuzzify`, `evaluateRules`, `inferAndDefuzz`, `aggregatedAt` e `runInference`) está em `js/fuzzy.js`, separado do código dos gráficos e da interface.
+
+Ao alterar umidade, temperatura, Δz ou o consequente de uma regra, a aplicação apaga o tempo calculado, o log, os graus de pertinência, as ativações nos cartões das regras e as marcações dos gráficos, e reinicia a sequência de etapas.

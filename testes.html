@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Testes de validação — Sistema Fuzzy de Irrigação</title>
+<style>
+  body { font-family: "Segoe UI", Arial, sans-serif; margin: 0; padding: 24px 16px 48px; background: #f4efe7; color: #2c1f0e; line-height: 1.5; }
+  main { max-width: 900px; margin: 0 auto; }
+  h1 { margin: 0 0 4px; font-size: 1.5rem; }
+  a { color: #a04515; }
+  #resumo { margin: 16px 0; padding: 12px 16px; border-radius: 10px; font-weight: 700; background: #e8dfd2; }
+  #resumo.ok { background: #dcebd0; color: #3d6b1f; }
+  #resumo.falha { background: #f6d5cc; color: #a3202f; }
+  section { margin-bottom: 14px; padding: 14px 16px; background: #fffaf3; border: 1px solid #e0d3c0; border-radius: 12px; }
+  h2 { margin: 0 0 8px; font-size: 1.05rem; }
+  ul { margin: 0; padding-left: 0; list-style: none; font-size: 0.92rem; }
+  li { padding: 2px 0; overflow-wrap: anywhere; }
+  li::before { display: inline-block; width: 22px; font-weight: 700; }
+  li.ok::before { content: "✓"; color: #3d6b1f; }
+  li.falha::before { content: "✗"; color: #a3202f; }
+  li.info::before { content: "•"; color: #8a6a48; }
+  li.falha { color: #a3202f; font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Testes de validação — Sistema Fuzzy de Irrigação</h1>
+  <p>
+    Esta página executa os testes da seção 6 do enunciado com as mesmas funções do simulador
+    (<code>js/fuzzy.js</code>). Tolerâncias: 0,000001 para pertinências, ativações e valores de
+    referência com seis casas; 0,01 minuto para os tempos.
+    <a href="index.html">← Voltar ao simulador</a>
+  </p>
+  <div id="resumo">Executando…</div>
+  <div id="saida"></div>
+</main>
+
+<script src="js/fuzzy.js"></script>
+<script>
+(function () {
+  let total = 0, falhas = 0, lista = null;
+  const saida = document.getElementById('saida');
+
+  function secao(titulo) {
+    const s = document.createElement('section');
+    s.innerHTML = '<h2>' + titulo + '</h2>';
+    lista = document.createElement('ul');
+    s.appendChild(lista);
+    saida.appendChild(s);
+  }
+  function item(classe, mensagem) {
+    const li = document.createElement('li');
+    li.className = classe;
+    li.textContent = mensagem;
+    lista.appendChild(li);
+  }
+  const info = m => item('info', m);
+  function verdadeiro(rotulo, cond) {
+    total++;
+    if (!cond) falhas++;
+    item(cond ? 'ok' : 'falha', rotulo);
+  }
+  function perto(rotulo, obtido, esperado, tol) {
+    total++;
+    const ok = typeof obtido === 'number' && Math.abs(obtido - esperado) <= tol;
+    if (!ok) falhas++;
+    item(ok ? 'ok' : 'falha', ok ? `${rotulo}: ${Number(obtido.toFixed(6))} (referência ${esperado})` : `${rotulo}: obtido ${obtido}, esperado ${esperado}`);
+  }
+  function tupla(rotulo, obtido, esperado) {
+    total++;
+    const ok = obtido.length === esperado.length && obtido.every((v, i) => Math.abs(v - esperado[i]) <= 1e-6);
+    if (!ok) falhas++;
+    item(ok ? 'ok' : 'falha', ok ? `${rotulo}: (${obtido.join('; ')})` : `${rotulo}: obtido (${obtido.join('; ')}), esperado (${esperado.join('; ')})`);
+  }
+
+  const REGRAS = () => DEFAULT_RULES.map(r => [...r]);
+  const umid = U => Object.values(fuzzify(U, 25).umidade);
+  const temp = T => Object.values(fuzzify(50, T).temperatura);
+  const ativas = r => r.activations.map((a, i) => (a.h > 0 ? `R${i + 1}=${a.h}` : null)).filter(Boolean).join(', ');
+
+  // ================= 6.1 =================
+  secao('6.1 — Pertinências e extremos');
+  tupla('U = 35% (seco; intermediário; úmido)', umid(35), [0.5, 0.5, 0]);
+  tupla('T = 30 °C (baixa; média; alta)', temp(30), [0, 0.5, 0.5]);
+  tupla('U = 0%', umid(0), [1, 0, 0]);
+  tupla('U = 100%', umid(100), [0, 0, 1]);
+  tupla('T = 10 °C', temp(10), [1, 0, 0]);
+  tupla('T = 40 °C', temp(40), [0, 0, 1]);
+  tupla('Saída nos extremos: μcurto(0); μlongo(30)', [membership(0, ...SETS.saida.curto), membership(30, ...SETS.saida.longo)], [1, 1]);
+  {
+    let finitos = true;
+    for (let x = 0; x <= 100; x += 0.5) for (const c of Object.values(SETS.umidade)) { const m = membership(x, ...c); if (!(m >= 0 && m <= 1)) finitos = false; }
+    for (let x = 10; x <= 40; x += 0.25) for (const c of Object.values(SETS.temperatura)) { const m = membership(x, ...c); if (!(m >= 0 && m <= 1)) finitos = false; }
+    for (let x = 0; x <= 30; x += 0.05) for (const c of Object.values(SETS.saida)) { const m = membership(x, ...c); if (!(m >= 0 && m <= 1)) finitos = false; }
+    verdadeiro('Nenhuma divisão por zero: todas as pertinências são números entre 0 e 1 em todo o domínio', finitos);
+  }
+
+  // ================= 6.2 =================
+  secao('6.2 — Ativação de uma única regra');
+  for (const [U, T, regra, tempo] of [[20, 35, 'R3=1', 25], [50, 25, 'R5=1', 15], [80, 25, 'R8=1', 5]]) {
+    const r = runInference(U, T, REGRAS(), 0.1);
+    verdadeiro(`U = ${U}%, T = ${T} °C: somente ${regra.replace('=', ' com ativação ')}`, ativas(r) === regra);
+    perto(`U = ${U}%, T = ${T} °C: tempo (min)`, r.zStar, tempo, 0.01);
+  }
+
+  // ================= 6.3 =================
+  secao('6.3 — Inferência completa com sobreposição (U = 35%, T = 30 °C, Δz = 0,1)');
+  {
+    const r = runInference(35, 30, REGRAS(), 0.1);
+    tupla('Fuzzificação da umidade', Object.values(r.fuzzyInputs.umidade), [0.5, 0.5, 0]);
+    tupla('Fuzzificação da temperatura', Object.values(r.fuzzyInputs.temperatura), [0, 0.5, 0.5]);
+    verdadeiro('Regras ativadas: R2, R3, R5 e R6 com h = 0,5; as demais com 0', ativas(r) === 'R2=0.5, R3=0.5, R5=0.5, R6=0.5');
+    verdadeiro('Consequentes: R2 → longo, R3 → longo, R5 → médio, R6 → longo', [1, 2, 4, 5].map(i => r.activations[i].outSet).join() === 'longo,longo,medio,longo');
+    for (const [z, mu] of [[0, 0], [3, 0.2], [7.5, 0.5], [15, 0.5], [30, 0.5]]) perto(`μagregada(${z})`, aggregatedAt(z, r.activations), mu, 1e-6);
+    verdadeiro('Agregação por máximo: três regras concluindo longo não passam de 0,5', r.aggregatedPoints.every(p => p.mu <= 0.5 + 1e-12));
+    verdadeiro('μagregada(z) = z/15 em [0; 7,5] e 0,5 em [7,5; 30] em todos os pontos amostrados', r.aggregatedPoints.every(p => Math.abs(p.mu - (p.z < 7.5 ? p.z / 15 : 0.5)) <= 1e-9));
+    perto('Centroide numérico (min)', r.zStar, 16.785683, 1e-6);
+    verdadeiro('Valor exibido com duas casas: 16.79', r.zStar.toFixed(2) === '16.79');
+  }
+
+  // ================= 6.4 =================
+  secao('6.4 — Simetria, alteração de regras e precisão');
+  {
+    const r = runInference(35, 20, REGRAS(), 0.1);
+    verdadeiro('U = 35%, T = 20 °C: R1, R2, R4 e R5 com ativação 0,5', ativas(r) === 'R1=0.5, R2=0.5, R4=0.5, R5=0.5');
+    verdadeiro('Agregação constante em 0,5 de 0 a 30', r.aggregatedPoints.every(p => Math.abs(p.mu - 0.5) <= 1e-12));
+    perto('Tempo (min)', r.zStar, 15, 0.01);
+
+    const todasCurto = REGRAS().map(regra => [regra[0], regra[1], 'curto']);
+    perto('Todas as regras → curto; U = 50%, T = 25 °C: tempo (min)', runInference(50, 25, todasCurto, 0.1).zStar, 5, 0.01);
+    perto('Base padrão restaurada; U = 35%, T = 30 °C: tempo (min)', runInference(35, 30, REGRAS(), 0.1).zStar, 16.79, 0.01);
+
+    for (const [dz, ref] of [[0.1, 16.785683], [0.05, 16.785706], [0.01, 16.785714]]) {
+      const z = runInference(35, 30, REGRAS(), dz).zStar;
+      perto(`Δz = ${dz}: centroide`, z, ref, 1e-6);
+      info(`Δz = ${dz}: diferença para o centroide contínuo (16,785714) = ${Math.abs(z - 16.785714).toFixed(6)}`);
+    }
+  }
+
+  // ================= 6.5 =================
+  secao('6.5 — Determinismo e saída inválida');
+  {
+    const a = runInference(35, 30, REGRAS(), 0.1);
+    const b = runInference(35, 30, REGRAS(), 0.1);
+    verdadeiro('Repetir a configuração produz os mesmos graus, ativações, área agregada e tempo', JSON.stringify(a) === JSON.stringify(b));
+    // "Avançar etapa" usa as mesmas funções, uma por vez
+    const fi = fuzzify(35, 30);
+    const at = evaluateRules(fi, REGRAS());
+    const passo = inferAndDefuzz(at, 0.1);
+    verdadeiro('Percorrer as etapas (fuzzify → evaluateRules → inferAndDefuzz) dá o mesmo tempo de Calcular', passo.zStar === a.zStar);
+    const semAtivacao = REGRAS().map(regra => ({ outSet: regra[2], h: 0 }));
+    verdadeiro('Denominador zero: devolve "sem saída válida" (null), e não zero', inferAndDefuzz(semAtivacao, 0.1).zStar === null);
+    info('A validação das entradas (U = −1, U = 101, T = 9, T = 41, campos vazios) é feita na tela do simulador, na função validate() do index.html.');
+  }
+
+  const resumo = document.getElementById('resumo');
+  resumo.textContent = falhas === 0 ? `${total} de ${total} verificações passaram.` : `${falhas} de ${total} verificações falharam.`;
+  resumo.className = falhas === 0 ? 'ok' : 'falha';
+  window.resultadoDosTestes = { total, falhas };
+})();
+</script>
+</body>
+</html>

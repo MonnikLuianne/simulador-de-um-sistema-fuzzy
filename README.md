@@ -217,7 +217,7 @@ Mesmo funcionamento para T no domínio [10 °C, 40 °C]. Com T = 30 °C, a linha
 **Destaque amarelo** (ao clicar em um card de regra) — mostra o recorte individual daquela regra, permitindo ver exatamente quanto ela contribuiu para a decisão.
 
 ### Pipeline de etapas
-A barra no topo (① → ② → ③ → ④ → ⑤) indica qual etapa foi executada por último. "Avançar etapa" percorre cada fase individualmente, atualizando os gráficos e o log progressivamente.
+A barra no topo (① → ② → ③ → ④ → ⑤) indica qual etapa foi executada por último. "Avançar etapa" percorre cada fase individualmente, atualizando os gráficos e o log progressivamente. No modo passo a passo, clicar em uma regra ativa mostra seu consequente original e o recorte; a área agregada só aparece a partir da etapa ④ e o centroide só na etapa ⑤, para que nenhum resultado seja exibido antes da etapa correspondente.
 
 ### Log de etapas
 Exibe em tempo real: graus de pertinência, ativações de cada regra, pontos de verificação da área agregada e o centroide final com 6 casas decimais de precisão interna.
@@ -292,9 +292,10 @@ Nenhuma divisão por zero ocorre: o trecho de pertinência 1 é avaliado antes d
 |---|---|---|
 | U = −1% | "Umidade fora do intervalo: -1% não está em [0, 100]." — cálculo bloqueado | ✓ |
 | U = 101% | "Umidade fora do intervalo: 101% não está em [0, 100]." — cálculo bloqueado | ✓ |
-| T = 9 °C | "Temperatura fora do intervalo: 9°C não está em [10, 40]." — cálculo bloqueado | ✓ |
-| T = 41 °C | "Temperatura fora do intervalo: 41°C não está em [10, 40]." — cálculo bloqueado | ✓ |
-| Umidade ou temperatura vazia / não numérica | "… deve ser um número válido." — cálculo bloqueado | ✓ |
+| T = 9 °C | "Temperatura fora do intervalo: 9 °C não está em [10, 40]." — cálculo bloqueado | ✓ |
+| T = 41 °C | "Temperatura fora do intervalo: 41 °C não está em [10, 40]." — cálculo bloqueado | ✓ |
+| Umidade ou temperatura vazia | "Umidade: o campo está vazio…" / "Temperatura: o campo está vazio…" — cálculo bloqueado | ✓ |
+| Umidade ou temperatura não numérica | "… deve ser um número válido." — cálculo bloqueado | ✓ |
 
 Nenhuma entrada é corrigida silenciosamente para o limite mais próximo. Alterar entradas, regras ou Δz limpa o resultado anterior e reinicia a sequência de etapas.
 
